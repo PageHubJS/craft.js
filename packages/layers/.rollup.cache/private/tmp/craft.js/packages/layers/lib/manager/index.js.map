@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/manager/index.tsx"],"names":[],"mappings":"AAAA,cAAc,mBAAmB,CAAC;AAClC,cAAc,WAAW,CAAC","sourcesContent":["export * from './useLayerManager';\nexport * from './context';\n"]}
