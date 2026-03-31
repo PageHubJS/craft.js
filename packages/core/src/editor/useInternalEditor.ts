@@ -46,6 +46,8 @@ export function useInternalEditor<C>(
   );
 
   useEffect(() => {
+    if (!connectorsUsage) return;
+
     connectorsUsage.register();
 
     return () => {
@@ -53,9 +55,24 @@ export function useInternalEditor<C>(
     };
   }, [connectorsUsage]);
 
+  // When Events is skipped (enabled=false), provide no-op passthrough connectors
+  const noopConnectors = useMemo(() => {
+    const noop = (el: HTMLElement) => el;
+    return wrapConnectorHooks({
+      connect: noop,
+      drag: noop,
+      select: noop,
+      hover: noop,
+      create: noop,
+    } as any);
+  }, []);
+
   const connectors = useMemo(
-    () => connectorsUsage && wrapConnectorHooks(connectorsUsage.connectors),
-    [connectorsUsage]
+    () =>
+      connectorsUsage
+        ? wrapConnectorHooks(connectorsUsage.connectors)
+        : noopConnectors,
+    [connectorsUsage, noopConnectors]
   );
 
   return {

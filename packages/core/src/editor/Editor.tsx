@@ -106,9 +106,11 @@ export const Editor = ({ children, ...options }: EditorProps) => {
     return null;
   }
 
+  // When enabled={false}, skip the entire Events system (drag/drop/selection/hover).
+  // This avoids instantiating DefaultEventHandlers and attaching DOM listeners.
   return (
     <EditorContext.Provider value={context}>
-      <Events>{children}</Events>
+      {options.enabled === false ? children : <Events>{children}</Events>}
     </EditorContext.Provider>
   );
 };
