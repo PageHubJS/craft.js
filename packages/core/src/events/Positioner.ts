@@ -1,6 +1,6 @@
 import { getDOMInfo, ROOT_NODE } from '@craftjs/utils';
 
-import findPosition from './findPosition';
+import findPosition, { BesideDetector } from './findPosition';
 
 import { EditorStore } from '../editor/store';
 import {
@@ -232,8 +232,11 @@ export class Positioner {
     this.currentDropTargetCanvasAncestorId = newParentNode.id;
 
     // Get parent if we're hovering at the border of the current node
+    // Skip if parent is ROOT — dropping into ROOT causes wrong placement
+    // for nodes that belong inside page-level containers
     if (
       newParentNode.data.parent &&
+      newParentNode.data.parent !== ROOT_NODE &&
       this.isNearBorders(getDOMInfo(newParentNode.dom), x, y) &&
       // Ignore if linked node because there's won't be an adjacent sibling anyway
       !this.store.query.node(newParentNode.id).isLinkedNode()
@@ -248,11 +251,16 @@ export class Positioner {
     this.currentTargetChildDimensions = this.getChildDimensions(newParentNode);
     this.currentTargetId = newParentNode.id;
 
+    const besideDetector:
+      | BesideDetector
+      | undefined = this.store.query.getOptions().besideDetector;
+
     const position = findPosition(
       newParentNode,
       this.currentTargetChildDimensions,
       x,
-      y
+      y,
+      besideDetector
     );
 
     // Ignore if the position is similar as the previous one

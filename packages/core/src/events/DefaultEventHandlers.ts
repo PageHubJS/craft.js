@@ -261,9 +261,18 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
               return;
             }
 
+            const where = indicator.placement.where;
+
+            if (where !== 'before' && where !== 'after') {
+              const onBesideDrop = store.query.getOptions().onBesideDrop;
+              if (onBesideDrop) {
+                onBesideDrop(dragTarget, indicator, store.actions, store.query);
+                return;
+              }
+            }
+
             const index =
-              indicator.placement.index +
-              (indicator.placement.where === 'after' ? 1 : 0);
+              indicator.placement.index + (where === 'after' ? 1 : 0);
 
             store.actions.move(
               dragTarget.nodes,
@@ -328,9 +337,18 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
               return;
             }
 
+            const where = indicator.placement.where;
+
+            if (where !== 'before' && where !== 'after') {
+              const onBesideDrop = store.query.getOptions().onBesideDrop;
+              if (onBesideDrop) {
+                onBesideDrop(dragTarget, indicator, store.actions, store.query);
+                return;
+              }
+            }
+
             const index =
-              indicator.placement.index +
-              (indicator.placement.where === 'after' ? 1 : 0);
+              indicator.placement.index + (where === 'after' ? 1 : 0);
             store.actions.addNodeTree(
               dragTarget.tree,
               indicator.placement.parent.id,

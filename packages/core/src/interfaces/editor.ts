@@ -1,6 +1,6 @@
 import { QueryCallbacksFor, Delete, PatchListenerAction } from '@craftjs/utils';
 
-import { Placement } from './events';
+import { DragTarget, NodeInfo, Placement } from './events';
 import { Nodes, NodeEventTypes, NodeId, Node } from './nodes';
 
 import { QueryMethods } from '../editor/query';
@@ -23,8 +23,12 @@ export type Options = {
     error: string;
     transition: string;
     thickness: number;
+    sectionThickness: number;
+    sectionParentTypes: string[];
     className: string;
     style: React.CSSProperties;
+    /** When true, in-flow drop indicators span the parent container width instead of the child width. */
+    fullWidth: boolean;
   }>;
   handlers: (store: EditorStore) => CoreEventHandlers;
   normalizeNodes: (
@@ -35,6 +39,20 @@ export type Options = {
       'patches'
     >,
     query: QueryCallbacksFor<typeof QueryMethods>
+  ) => void;
+  /** Called by findPosition to detect horizontal (beside) intent during drag. Return 'beside-left' or 'beside-right' to trigger a beside drop, or null for normal behavior. */
+  besideDetector?: (
+    parent: Node,
+    childDim: NodeInfo,
+    posX: number,
+    posY: number
+  ) => string | null;
+  /** Called on drop when placement.where is a custom value (not 'before'/'after'). Consumer handles the restructuring. */
+  onBesideDrop?: (
+    dragTarget: DragTarget,
+    indicator: Indicator,
+    actions: any,
+    query: any
   ) => void;
 };
 

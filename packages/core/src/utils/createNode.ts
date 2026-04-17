@@ -122,6 +122,21 @@ export function createNode(
       });
     }
 
+    // Per-instance rule overrides via custom.rules
+    // Allows individual nodes to override component-level rules (e.g. canMoveOut)
+    if (node.data.custom?.rules) {
+      const VALID_RULES = ['canDrag', 'canDrop', 'canMoveIn', 'canMoveOut'];
+      Object.keys(node.data.custom.rules).forEach((key) => {
+        if (
+          VALID_RULES.includes(key) &&
+          typeof node.data.custom.rules[key] === 'function'
+        ) {
+          node.rules[key] = node.data.custom.rules[key];
+        }
+      });
+      delete node.data.custom.rules;
+    }
+
     if (userComponentConfig.related) {
       const relatedNodeContext = {
         id: node.id,

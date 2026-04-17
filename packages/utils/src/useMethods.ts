@@ -501,6 +501,7 @@ class Subscriber {
   collect() {
     try {
       const recollect = this.collector();
+      if (recollect == null) return;
       if (!isEqualWith(recollect, this.collected)) {
         this.collected = recollect;
         if (this.onChange) this.onChange(this.collected);

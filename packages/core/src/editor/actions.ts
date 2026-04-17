@@ -353,8 +353,8 @@ const Methods = (
 
       const targets = getNodesFromSelector(state.nodes, nodeIdSelector, {
         idOnly: true,
-        existOnly: true,
-      });
+        existOnly: false,
+      }).filter(({ exists }) => exists);
 
       const nodeIds: Set<NodeId> = new Set(targets.map(({ node }) => node.id));
       nodeIds.forEach((id) => {

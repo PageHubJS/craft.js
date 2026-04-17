@@ -21,9 +21,11 @@ export function useInternalNode<S = null>(collect?: (node: Node) => S) {
     query,
     connectors: editorConnectors,
     ...collected
-  } = useInternalEditor(
-    (state) => id && state.nodes[id] && collect && collect(state.nodes[id])
-  );
+  } = useInternalEditor((state) => {
+    if (!id || !state.nodes[id] || !state.nodes[id].data || !collect)
+      return null;
+    return collect(state.nodes[id]);
+  });
 
   const connectors = useMemo(
     () =>
