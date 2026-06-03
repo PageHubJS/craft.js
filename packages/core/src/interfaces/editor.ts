@@ -19,6 +19,8 @@ export type Options = {
   resolver: Resolver;
   enabled: boolean;
   indicator: Partial<{
+    /** Set to false to suppress the default drop indicator. */
+    enabled: boolean;
     success: string;
     error: string;
     transition: string;
@@ -54,6 +56,15 @@ export type Options = {
     actions: any,
     query: any
   ) => void;
+  /** Custom position algorithm. When provided, replaces the built-in findPosition in Positioner.computeIndicator. */
+  findPosition?: (
+    parent: Node,
+    dims: NodeInfo[],
+    posX: number,
+    posY: number
+  ) => import('./events').DropPosition;
+  /** Controls whether Positioner promotes to parent when cursor is near container borders. Return false to stay in the current container. */
+  shouldPromoteToParent?: (currentNode: Node, parentNode: Node) => boolean;
 };
 
 export type Resolver = Record<string, string | React.ElementType>;

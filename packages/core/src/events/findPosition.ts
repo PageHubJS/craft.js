@@ -1,10 +1,18 @@
 import { Node, NodeInfo, DropPosition } from '../interfaces';
 
+export type BesideDetector = (
+  parent: Node,
+  childDim: NodeInfo,
+  posX: number,
+  posY: number
+) => string | null;
+
 export default function findPosition(
   parent: Node,
   dims: NodeInfo[],
   posX: number,
-  posY: number
+  posY: number,
+  besideDetector?: BesideDetector
 ) {
   let result: DropPosition = {
     parent,
@@ -53,6 +61,15 @@ export default function findPosition(
         result.where = 'after';
       }
     } else {
+      // Check for beside (horizontal intent) if consumer provided a detector
+      if (besideDetector) {
+        const beside = besideDetector(parent, dim, posX, posY);
+        if (beside) {
+          result.where = beside;
+          break;
+        }
+      }
+
       // If y upper than center
       if (posY < yCenter) {
         result.where = 'before';

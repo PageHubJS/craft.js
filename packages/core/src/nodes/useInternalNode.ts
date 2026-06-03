@@ -22,7 +22,13 @@ export function useInternalNode<S = null>(collect?: (node: Node) => S) {
     connectors: editorConnectors,
     ...collected
   } = useInternalEditor((state) => {
-    if (!id || !state.nodes[id] || !state.nodes[id].data || !collect)
+    if (
+      !id ||
+      !state.nodes[id] ||
+      !state.nodes[id].data ||
+      !state.nodes[id].data.props ||
+      !collect
+    )
       return null;
     return collect(state.nodes[id]);
   });

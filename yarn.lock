@@ -3591,7 +3591,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@craftjs/core@workspace:packages/core"
   dependencies:
-    "@craftjs/utils": ^0.2.5
+    "@craftjs/utils": ^0.2.7
     "@types/lodash": ^4.14.195
     "@types/react": 19.0.8
     "@types/react-dom": 19.0.3
@@ -3620,7 +3620,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@craftjs/utils@^0.2.5, @craftjs/utils@workspace:packages/utils":
+"@craftjs/utils@^0.2.5, @craftjs/utils@^0.2.7, @craftjs/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@craftjs/utils@workspace:packages/utils"
   dependencies:

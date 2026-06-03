@@ -11,17 +11,22 @@ export type FrameProps = {
   data?: string | SerializedNodes;
 };
 
-const RenderRootNode = () => {
-  const { timestamp } = useInternalEditor((state) => ({
+const RenderRootNode = ({ loaded }: { loaded: boolean }) => {
+  const { timestamp, enabled } = useInternalEditor((state) => ({
     timestamp:
       state.nodes[ROOT_NODE] && state.nodes[ROOT_NODE]._hydrationTimestamp,
+    enabled: state.options.enabled,
   }));
 
-  if (!timestamp) {
+  // Use loaded flag from Frame to handle SSR — the store subscription
+  // won't re-fire during the same server render pass after deserialize.
+  if (!timestamp && !loaded) {
     return null;
   }
 
-  return <NodeElement id={ROOT_NODE} key={timestamp} />;
+  // In viewer mode (enabled=false), skip the timestamp key so React diffs
+  // instead of tearing down and rebuilding the entire tree on deserialize.
+  return <NodeElement id={ROOT_NODE} key={enabled ? timestamp : ROOT_NODE} />;
 };
 
 /**
@@ -59,5 +64,5 @@ export const Frame = ({ children, json, data }: FrameProps) => {
     isLoaded.current = true;
   }
 
-  return <RenderRootNode />;
+  return <RenderRootNode loaded={isLoaded.current} />;
 };

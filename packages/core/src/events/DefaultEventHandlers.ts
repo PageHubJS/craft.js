@@ -31,8 +31,75 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
   positioner: Positioner | null = null;
   currentSelectedElementIds = [];
 
+  // rAF-coalesced dragover: native dragover fires up to ~1000Hz on high-DPI mice.
+  // We collapse all events within a single frame to one indicator computation +
+  // one state write, eliminating redundant getBoundingClientRect work and
+  // React re-renders of the drop indicator.
+  private pendingDragover: {
+    targetId: NodeId;
+    x: number;
+    y: number;
+  } | null = null;
+  private dragoverRafId: number = 0;
+
+  private flushDragover = () => {
+    this.dragoverRafId = 0;
+    const pending = this.pendingDragover;
+    this.pendingDragover = null;
+    if (!pending || !this.positioner) return;
+    const indicator = this.positioner.computeIndicator(
+      pending.targetId,
+      pending.x,
+      pending.y
+    );
+    if (!indicator) return;
+    this.options.store.actions.setIndicator(indicator);
+  };
+
+  private cancelPendingDragover() {
+    if (this.dragoverRafId) {
+      cancelAnimationFrame(this.dragoverRafId);
+      this.dragoverRafId = 0;
+    }
+    this.pendingDragover = null;
+  }
+
   onDisable() {
+    this.cancelPendingDragover();
     this.options.store.actions.clearEvents();
+  }
+
+  /**
+   * Called at drop time to execute the placement.
+   * Override in subclass to handle custom intent types (alignment, etc).
+   */
+  protected executeDrop(dragTarget: DragTarget, indicator: Indicator): void {
+    const store = this.options.store;
+    const where = indicator.placement.where;
+
+    if (where !== 'before' && where !== 'after') {
+      const onBesideDrop = store.query.getOptions().onBesideDrop;
+      if (onBesideDrop) {
+        onBesideDrop(dragTarget, indicator, store.actions, store.query);
+        return;
+      }
+    }
+
+    const index = indicator.placement.index + (where === 'after' ? 1 : 0);
+
+    if (dragTarget.type === 'existing') {
+      store.actions.move(
+        dragTarget.nodes,
+        indicator.placement.parent.id,
+        index
+      );
+    } else {
+      store.actions.addNodeTree(
+        dragTarget.tree,
+        indicator.placement.parent.id,
+        index
+      );
+    }
   }
 
   handlers() {
@@ -170,17 +237,18 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
               return;
             }
 
-            const indicator = this.positioner.computeIndicator(
+            // Coalesce dragover at frame rate. Native dragover fires far faster
+            // than React can re-render the indicator; collapsing to one
+            // computeIndicator + setIndicator per frame eliminates redundant
+            // getBoundingClientRect work and indicator re-renders.
+            this.pendingDragover = {
               targetId,
-              e.clientX,
-              e.clientY
-            );
-
-            if (!indicator) {
-              return;
+              x: e.clientX,
+              y: e.clientY,
+            };
+            if (!this.dragoverRafId) {
+              this.dragoverRafId = requestAnimationFrame(this.flushDragover);
             }
-
-            store.actions.setIndicator(indicator);
           }
         );
 
@@ -231,15 +299,21 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
 
             actions.setNodeEvent('dragged', selectedElementIds);
 
-            const selectedDOMs = selectedElementIds.map(
-              (id) => query.node(id).get().dom
-            );
+            // Filter out null DOM refs (node exists in state but ref callback
+            // hasn't attached yet — can happen with programmatically-inserted
+            // nodes that are dragged before first paint). createShadow will crash
+            // on getBoundingClientRect otherwise.
+            const selectedDOMs = selectedElementIds
+              .map((id) => query.node(id).get().dom)
+              .filter((dom): dom is HTMLElement => dom != null);
 
-            this.draggedElementShadow = createShadow(
-              e,
-              selectedDOMs,
-              DefaultEventHandlers.forceSingleDragShadow
-            );
+            if (selectedDOMs.length > 0) {
+              this.draggedElementShadow = createShadow(
+                e,
+                selectedDOMs,
+                DefaultEventHandlers.forceSingleDragShadow
+              );
+            }
 
             this.dragTarget = {
               type: 'existing',
@@ -260,25 +334,7 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
             if (dragTarget.type === 'new') {
               return;
             }
-
-            const where = indicator.placement.where;
-
-            if (where !== 'before' && where !== 'after') {
-              const onBesideDrop = store.query.getOptions().onBesideDrop;
-              if (onBesideDrop) {
-                onBesideDrop(dragTarget, indicator, store.actions, store.query);
-                return;
-              }
-            }
-
-            const index =
-              indicator.placement.index + (where === 'after' ? 1 : 0);
-
-            store.actions.move(
-              dragTarget.nodes,
-              indicator.placement.parent.id,
-              index
-            );
+            this.executeDrop(dragTarget, indicator);
           });
         });
 
@@ -336,25 +392,7 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
             if (dragTarget.type === 'existing') {
               return;
             }
-
-            const where = indicator.placement.where;
-
-            if (where !== 'before' && where !== 'after') {
-              const onBesideDrop = store.query.getOptions().onBesideDrop;
-              if (onBesideDrop) {
-                onBesideDrop(dragTarget, indicator, store.actions, store.query);
-                return;
-              }
-            }
-
-            const index =
-              indicator.placement.index + (where === 'after' ? 1 : 0);
-            store.actions.addNodeTree(
-              dragTarget.tree,
-              indicator.placement.parent.id,
-              index
-            );
-
+            this.executeDrop(dragTarget, indicator);
             if (options && isFunction(options.onCreate)) {
               options.onCreate(dragTarget.tree);
             }
@@ -370,10 +408,14 @@ export class DefaultEventHandlers<O = {}> extends CoreEventHandlers<
     };
   }
 
-  private dropElement(
+  protected dropElement(
     onDropNode: (dragTarget: DragTarget, placement: Indicator) => void
   ) {
     const store = this.options.store;
+
+    // Drop a pending dragover frame — its setIndicator would race with the
+    // setIndicator(null) below and leave a stale indicator on screen.
+    this.cancelPendingDragover();
 
     if (!this.positioner) {
       return;

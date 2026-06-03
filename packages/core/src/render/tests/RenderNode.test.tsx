@@ -20,6 +20,7 @@ jest.mock('../../editor/useInternalEditor', () => ({
 jest.mock('../../nodes/useInternalNode', () => ({
   useInternalNode: () => ({
     ...node,
+    exists: !!node.props,
     ...nodeContext,
   }),
 }));

@@ -110,7 +110,7 @@ export const Editor = ({ children, ...options }: EditorProps) => {
   // This avoids instantiating DefaultEventHandlers and attaching DOM listeners.
   return (
     <EditorContext.Provider value={context}>
-      {options.enabled === false ? children : <Events>{children}</Events>}
+      <Events>{children}</Events>
     </EditorContext.Provider>
   );
 };

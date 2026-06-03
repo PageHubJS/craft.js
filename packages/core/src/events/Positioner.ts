@@ -1,6 +1,6 @@
 import { getDOMInfo, ROOT_NODE } from '@craftjs/utils';
 
-import findPosition, { BesideDetector } from './findPosition';
+import findPosition from './findPosition';
 
 import { EditorStore } from '../editor/store';
 import {
@@ -233,15 +233,23 @@ export class Positioner {
 
     // Get parent if we're hovering at the border of the current node
     // Skip if parent is ROOT — dropping into ROOT causes wrong placement
-    // for nodes that belong inside page-level containers
+    // for nodes that belong inside page-level containers.
+    // Skip if dom is null (e.g. programmatically-inserted nodes whose ref
+    // callback hasn't fired yet — same class of race guarded in
+    // DefaultEventHandlers.dragstart). getDOMInfo would crash on
+    // getBoundingClientRect otherwise.
     if (
       newParentNode.data.parent &&
       newParentNode.data.parent !== ROOT_NODE &&
+      newParentNode.dom &&
       this.isNearBorders(getDOMInfo(newParentNode.dom), x, y) &&
-      // Ignore if linked node because there's won't be an adjacent sibling anyway
       !this.store.query.node(newParentNode.id).isLinkedNode()
     ) {
-      newParentNode = this.store.query.node(newParentNode.data.parent).get();
+      const parentNode = this.store.query.node(newParentNode.data.parent).get();
+      const shouldPromote = this.store.query.getOptions().shouldPromoteToParent;
+      if (!shouldPromote || shouldPromote(newParentNode, parentNode)) {
+        newParentNode = parentNode;
+      }
     }
 
     if (!newParentNode) {
@@ -251,17 +259,23 @@ export class Positioner {
     this.currentTargetChildDimensions = this.getChildDimensions(newParentNode);
     this.currentTargetId = newParentNode.id;
 
-    const besideDetector:
-      | BesideDetector
-      | undefined = this.store.query.getOptions().besideDetector;
+    const options = this.store.query.getOptions();
+    const customFindPosition = options.findPosition;
 
-    const position = findPosition(
-      newParentNode,
-      this.currentTargetChildDimensions,
-      x,
-      y,
-      besideDetector
-    );
+    const position = customFindPosition
+      ? customFindPosition(
+          newParentNode,
+          this.currentTargetChildDimensions,
+          x,
+          y
+        )
+      : findPosition(
+          newParentNode,
+          this.currentTargetChildDimensions,
+          x,
+          y,
+          options.besideDetector
+        );
 
     // Ignore if the position is similar as the previous one
     if (!this.isDiff(position)) {

@@ -30,7 +30,7 @@ export const RenderEditorIndicator = () => {
     handler.enable();
   }, [enabled, handler]);
 
-  if (!indicator) {
+  if (!indicator || indicatorOptions?.enabled === false) {
     return null;
   }
 

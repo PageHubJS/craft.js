@@ -65,6 +65,11 @@ export abstract class EventHandlers<O extends Record<string, any> = {}> {
     options?: boolean | AddEventListenerOptions
   ) {
     const bindedListener = (e: CraftDOMEvent<HTMLElementEventMap[K]>) => {
+      const target = e.target as HTMLElement;
+      if (target?.closest?.('[data-node-control]')) {
+        return;
+      }
+
       if (!isEventBlockedByDescendant(e, eventName, el)) {
         e.craft.stopPropagation = () => {
           if (!e.craft.blockedEvents[eventName]) {
